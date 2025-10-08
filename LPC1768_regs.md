@@ -20,6 +20,10 @@ Resumen de los registros más importantes del microcontrolador **LPC1768 (ARM Co
 - Bit 6: PCPWM1 (PWM1)
 - Bit 12: PCADC (ADC)
 - Bit 15: PCGPIO (GPIO)
+- Bit 22: PCTIM2 (Timer 2)
+- Bit 23: PCTIM3 (Timer 3)
+- Bit 24: PCUART2 (UART2)
+- Bit 25: PCUART3 (UART3)
 
 ### Clock Control
 | Registro | Dirección | Función |
@@ -33,6 +37,21 @@ Resumen de los registros más importantes del microcontrolador **LPC1768 (ARM Co
 - 01: PCLK = CCLK
 - 10: PCLK = CCLK/2
 - 11: PCLK = CCLK/8
+
+##### Algunos bits importantes
+- Bit 1:0: PCLK_WDT (Peripheral clock selection for WDT.)
+- Bit 3:2: PCLK_TIMER0
+- Bit 5:4: PCLK_TIMER1
+- Bit 7:6: PCLK_UART0
+- Bit 9:8: PCLK_UART1
+
+```c
+// PCLK_TIMER0 = CCLK / 2
+// PCLK_UART0  = CCLK
+
+LPC_SC->PCLKSEL0 &= ~((0x3 << 2) | (0x3 << 6));  // Limpia Timer0 y UART0
+LPC_SC->PCLKSEL0 |=  ((0x2 << 2) | (0x1 << 6));  // Timer0=CCLK/2, UART0=CCLK
+```
 
 ---
 
@@ -53,6 +72,16 @@ Resumen de los registros más importantes del microcontrolador **LPC1768 (ARM Co
 - 10: Función alternativa 2
 - 11: Función alternativa 3
 
+```c
+// P0.2=TXD0 (Func1), P0.3=RXD0 (Func1), P0.10=GPIO (00)
+LPC_PINCON->PINSEL0 &= ~((3u<<(2*2)) | (3u<<(2*3)) | (3u<<(2*10)));  // limpia campos
+LPC_PINCON->PINSEL0 |=  ((1u<<(2*2)) | (1u<<(2*3)));                // 01 = Función 1 (UART0)
+// (opcional) usar P0.10 como salida GPIO:
+LPC_GPIO0->FIODIR   |=  (1u<<10);
+
+// NOTA: TXD0 y RXD0 son transmision y recepcion del UART0
+```
+
 ### Pin Mode (Pull-up/Pull-down)
 | Registro | Dirección | Función |
 |-----------|-----------|---------|
@@ -68,6 +97,7 @@ Resumen de los registros más importantes del microcontrolador **LPC1768 (ARM Co
 | Registro | Dirección Base | Función |
 |-----------|----------------|---------|
 | **FIO0DIR** | 0x2009C000 | Dirección Puerto 0 (1=salida, 0=entrada) |
+| **FIO0MASK** | 0x2009C010 | Es la máscara del Puerto 0 para las operaciones con FIO0PIN |
 | **FIO0PIN** | 0x2009C014 | Valor actual Puerto 0 |
 | **FIO0SET** | 0x2009C018 | Set bits Puerto 0 |
 | **FIO0CLR** | 0x2009C01C | Clear bits Puerto 0 |
@@ -88,6 +118,16 @@ FIO0CLR |= (1 << 22);    // P0.22 = LOW
 ---
 
 ## 🔹 Timers (Timer 0-3)
+### Intro
+Los Timer 0,1,2 y 3 son periféricos configurados usando los siguientes registros:
+1. Power: Mediante el registro PCONP (Al hacer reset, los registros 0 y 1 están activados. Los otros NO)
+2. Peripheral Clock: Hay que ajustar el valor de PCLKSEL0 para Timers 0-1 y PCLKSEL1 para Timers 2-3
+3. Pins: Seleccionar los pines de timer mediante el registro PINSEL y PINMODE
+4. Interrupt: Ver los registros T0/1/2/3MCR y T0/1/2/3CCR para match y capture. Las interrupciones son habilitadas en el NVIC usando el registro de interrupcion adecuado.
+```c
+NVIC_EnableIRQ(TIMER0_IRQn);  // habilita interrupción de Timer0
+```
+5. DMA: Hasta dos de esos eventos de “match” pueden configurarse para disparar una solicitud DMA (Direct Memory Access).
 
 ### Registros Base
 | Timer | Dirección Base |
@@ -100,15 +140,19 @@ FIO0CLR |= (1 << 22);    // P0.22 = LOW
 ### Registros de Control
 | Registro | Offset | Función |
 |-----------|--------|---------|
-| **TCR** | +0x04 | Timer Control Register |
-| **TC** | +0x08 | Timer Counter |
-| **PR** | +0x0C | Prescale Register |
-| **PC** | +0x10 | Prescale Counter |
-| **MCR** | +0x14 | Match Control Register |
-| **MR0-MR3** | +0x18-0x24 | Match Registers |
-| **CCR** | +0x28 | Capture Control Register |
-| **CR0-CR3** | +0x2C-0x38 | Capture Registers |
-| **EMR** | +0x3C | External Match Register |
+| **IR** | +0x00 | Interrupt Register - Muestra qué evento produjo la interrupción (Se limpia escribiendo 1) |
+| **TCR** | +0x04 | Timer Control Register - Arranque y reset del contador |
+| **TC** | +0x08 | Timer Counter - Contador principal de 32 bits |
+| **PR** | +0x0C | Prescale Register - Valor del divisor de frecuencia |
+| **PC** | +0x10 | Prescale Counter - Contador del prescaler, se reinicia al alcanzar PR |
+| **MCR** | +0x14 | Match Control Register - Define acciones al coincidir TC=MRx |
+| **MR0-MR3** | +0x18-0x24 | Match Registers - Valores de comparación |
+| **CCR** | +0x28 | Capture Control Register - Configuración del flancos de captura y habilitación de interrupciones |
+| **CR0-CR3** | +0x2C-0x38 | Capture Registers - Almacenan el valor de TC al capturar |
+| **EMR** | +0x3C | External Match Register - Controla las salidas MATx.y (Toggle, set, clear) |
+| **CTCR** | +0x70 | Count Control Register - Selecciona modo Timer o Counter y fuente externa |
+| **PWMC** | +0x74 | PWM Control - Habilita salida PWM simple en coincidencias MRx |
+
 
 #### TCR - Bits importantes:
 - Bit 0: Counter Enable (1=enable, 0=disable)
@@ -120,13 +164,55 @@ FIO0CLR |= (1 << 22);    // P0.22 = LOW
 - Bits 6-8: MR2 (Interrupt, Reset, Stop)
 - Bits 9-11: MR3 (Interrupt, Reset, Stop)
 
+#### CCR - Capture Control Register
+| Bits | Función                                  |
+| ---- | ---------------------------------------- |
+| 0    | Captura en flanco ascendente en CAPn.0   |
+| 1    | Captura en flanco descendente en CAPn.0  |
+| 2    | Habilita interrupción por captura CAPn.0 |
+| 3–5  | Igual para CAPn.1                        |
+| 6–8  | Igual para CAPn.2                        |
+| 9–11 | Igual para CAPn.3                        |
+
+#### EMR - External Match Register
+Permite que las salidas MATn.0-MATn.3 cambien de estado automáticamente al producirse una coincidencia.
+| Bits | Campo     | Descripción                                                            |
+| ---- | --------- | ---------------------------------------------------------------------- |
+| 0–3  | EM0–EM3   | Estado actual de las salidas externas (lectura/escritura)              |
+| 4–11 | EMC0–EMC3 | 00 = Sin acción, 01 = Clear, 10 = Set, 11 = Toggle en coincidencia MRx |
+
+#### CTCR - Count Control Register
+| Bits | Campo            | Descripción                                                                                                                          |
+| ---- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 1:0  | **Mode**         | 00 = Timer (usa PCLK)<br>01 = Counter por flanco ascendente<br>10 = Counter por flanco descendente<br>11 = Counter por ambos flancos |
+| 3:2  | **Input Select** | Selecciona cuál entrada CAPn.x se usa como fuente de conteo externo                                                                  |
+
+
+#### PWMC - PWM Control Register
+Permite generar PWM básico con el propio temporizador, sin usar el periférico PWM1 completo.
+| Bits | Campo  | Descripción                  |
+| ---- | ------ | ---------------------------- |
+| 0–3  | PWMENx | 1 = habilita modo PWM en MRx |
+
+
 **Ejemplo Timer básico:**
 ```c
-T0TCR = 0x02;      // Reset timer
-T0PR = 24999;      // Prescaler para 1ms @ 25MHz
-T0MR0 = 1000;      // Match en 1 segundo
-T0MCR = 0x03;      // Interrupt y reset en MR0
-T0TCR = 0x01;      // Start timer
+// Supone PCLK_TIMER0 = 25 MHz
+LPC_SC->PCONP |= (1 << 1);        // Alimenta TIMER0
+LPC_SC->PCLKSEL0 &= ~(3 << 2);    // PCLK_TIMER0 = CCLK/4 (25 MHz si CPU=100 MHz)
+
+LPC_TIM0->TCR = 0x02;             // Reset timer
+LPC_TIM0->PR  = 24999;            // Prescaler -> incrementa TC cada 1 ms (25 MHz / 25,000)
+LPC_TIM0->MR0 = 1000;             // Match cada 1 segundo
+LPC_TIM0->MCR = (1<<0) | (1<<1);  // MR0 genera interrupción y reset
+LPC_TIM0->TCR = 0x01;             // Inicia el temporizador
+
+NVIC_EnableIRQ(TIMER0_IRQn);      // Habilita IRQ en el NVIC
+
+void TIMER0_IRQHandler(void) {
+  LPC_TIM0->IR = 1;               // Limpia bandera MR0
+  LPC_GPIO0->FIOPIN ^= (1<<10);   // Ejemplo: conmutar LED en P0.10
+}
 ```
 
 ---
@@ -179,41 +265,122 @@ U0FCR = 0x07;        // Enable FIFO
 ---
 
 ## 🔹 PWM1
+### Intro
+El PWM se configura usando los siguientes registros
+1. Power: En el registro PCONP, poner el bit PCPWM1 (En reset ya está a 1)
+2. Peripheral Clock: En el registro PCLKSEL0, seleccionar PCLK_PWM1.
+3. PINS: Seleccionar los pines PWM mediante los registros PINSEL. Seleccionar los pin modes con las funciones PWM1 mediante PINMODE.
+4. Interrupts: Ver los registros PWM1MCR y PWM1CCR. Habilitar las interrupciones NVIC.
+```c
+NVIC_EnableIRQ(PWM1_IRQn);
+```
 
-### Dirección Base: 0x40018000
+### Dirección Base:
+| Periférico | Dirección base |
+| ---------- | -------------- |
+| **PWM1**   | `0x4001 8000`  |
+
 
 ### Registros de Control
-| Registro | Offset | Función |
-|-----------|--------|---------|
-| **TCR** | +0x04 | Timer Control Register |
-| **TC** | +0x08 | Timer Counter |
-| **PR** | +0x0C | Prescale Register |
-| **MR0** | +0x18 | Match Register 0 (Periodo) |
-| **MR1-MR6** | +0x1C-0x30 | Match Registers 1-6 (Duty Cycle) |
-| **LER** | +0x50 | Load Enable Register |
-| **PCR** | +0x4C | PWM Control Register |
+| Registro | Offset | Descripción |
+| ----------- | ---------- | ------------------------------------------------------------------------------------------- |
+| **IR**      | +0x00      | Interrupt Register – bandera de interrupciones por match/capture (se limpia escribiendo 1). |
+| **TCR**     | +0x04      | Timer Control Register – arranque, reset y modo PWM.                                        |
+| **TC**      | +0x08      | Timer Counter – contador principal.                                                         |
+| **PR**      | +0x0C      | Prescale Register – divisor del reloj base.                                                 |
+| **MCR**     | +0x14      | Match Control Register – acciones al coincidir MRx (interrumpir, resetear, parar).          |
+| **MR0–MR6** | +0x18–0x30 | Match Registers – MR0 define el periodo, MR1–MR6 el duty cycle.                             |
+| **CCR**     | +0x28      | Capture Control Register – captura de TC por flancos de entrada CAPn.x.                     |
+| **LER**     | +0x50      | Load Enable Register – actualiza MRx en el siguiente ciclo.                                 |
+| **PCR**     | +0x4C      | PWM Control Register – activa salidas PWM y modo single/double edge.                        |
+| **CTCR**    | +0x70      | Count Control Register – modo Timer o Counter.                                              |
+| **PWMC**    | +0x74      | PWM Mode Control – activa modo PWM general. *(En LPC1768 ya se gestiona desde TCR)*         |
+
+
+### Detalles Registros
+
+#### TCR - Timer Control Register
+| Bit | Nombre                  | Función                                        |
+| :-: | :---------------------- | :--------------------------------------------- |
+|  0  | **Counter Enable (CE)** | 1 = habilita contador                          |
+|  1  | **Counter Reset (CR)**  | 1 = resetea TC y PC                            |
+|  3  | **PWM Enable (PWMEN)**  | 1 = habilita modo PWM (TC activo + PWM activo) |
+
+En modo PWM, se suele escribir TCR = 0x09 (bits 3 y 0 activos).
+
+#### MCR - Match Control Register
+|  Bits | Función            |
+| :---: | :----------------- |
+| [0–2] | MR0I / MR0R / MR0S |
+| [3–5] | MR1I / MR1R / MR1S |
+|  ...  | ...                |
+
 
 #### PCR - PWM Control:
-- Bits 9-14: PWMENA1-PWMENA6 (Enable PWM outputs)
-- Bit 2: PWMSEL2 (Single/Double edge)
-- Bit 3: PWMSEL3
-- Bit 4: PWMSEL4
-- Bit 5: PWMSEL5
-- Bit 6: PWMSEL6
+|  Bit | Nombre              | Descripción                      |
+| :--: | :------------------ | :------------------------------- |
+| 9–14 | **PWMENA1–PWMENA6** | 1 = activa cada salida PWM1.x    |
+|  2–6 | **PWMSELx**         | 0 = single edge, 1 = double edge |
 
 #### LER - Load Enable:
-- Bit 0: Load MR0
-- Bits 1-6: Load MR1-MR6
+Permite actualizar MRx de forma segura
+| Bit | Significado   |
+| --- | ------------- |
+| 0   | Carga MR0     |
+| 1–6 | Carga MR1–MR6 |
+
+Hay que escribir 1 en el bit correspondiente después de modificar MRx, para que el nuevo valor se aplique al final del ciclo PWM actual.
+
+#### IR - Interrupt Register
+| Bit | Evento               |
+| --- | -------------------- |
+| 0–6 | MR0–MR6 coincidencia |
+| 8   | Captura 0            |
+| 9   | Captura 1            |
+
+Se limpia escribiendo un 1 en el bit correspondiente.
+
+#### CCR - Capture Control Register
+Usado si se emplea la función de captura (CAP1.0, CAP1.1):
+| Bit | Descripción                |
+| --- | -------------------------- |
+| 0   | Captura flanco ascendente  |
+| 1   | Captura flanco descendente |
+| 2   | Interrupción por captura   |
+| 3–5 | Igual para CAP1.1          |
 
 **Ejemplo PWM:**
 ```c
-PWM1TCR = 0x02;      // Reset PWM
-PWM1PR = 0;          // Sin prescaler
-PWM1MR0 = 1000;      // Periodo = 1000 ciclos
-PWM1MR1 = 500;       // Duty = 50%
-PWM1LER = 0x03;      // Load MR0 y MR1
-PWM1PCR = 0x0200;    // Enable PWM1.1
-PWM1TCR = 0x09;      // Enable PWM y Counter
+#include "LPC17xx.h"
+
+void PWM1_init(void) {
+  LPC_SC->PCONP |= (1 << 6);               // Power PWM1
+  LPC_SC->PCLKSEL0 &= ~(3 << 12);          // PCLK_PWM1 = CCLK/4
+  LPC_PINCON->PINSEL4 |= (1 << 0);         // P2.0 -> PWM1.1
+  LPC_PINCON->PINMODE4 &= ~(3 << 0);       // Pull-up por defecto
+
+  LPC_PWM1->PR  = 0;                       // Sin prescaler
+  LPC_PWM1->MR0 = 1000;                    // Periodo = 1000 ticks
+  LPC_PWM1->MR1 = 500;                     // 50% duty
+  LPC_PWM1->MCR = (1 << 1);                // Reset TC on MR0
+  LPC_PWM1->LER = (1 << 0) | (1 << 1);     // Cargar MR0 y MR1
+  LPC_PWM1->PCR = (1 << 9);                // Enable PWM1.1
+  LPC_PWM1->TCR = (1 << 3) | (1 << 0);     // Enable PWM + counter
+}
+
+void PWM1_IRQHandler(void) {
+  if (LPC_PWM1->IR & (1 << 0)) {           // MR0 interrupt?
+    LPC_PWM1->IR = (1 << 0);               // Limpiar bandera MR0
+    // Aquí tu código periódico, p. ej. ajustar duty dinámicamente
+  }
+}
+
+int main(void) {
+  PWM1_init();
+  NVIC_EnableIRQ(PWM1_IRQn);
+  while(1);
+}
+
 ```
 
 ---
