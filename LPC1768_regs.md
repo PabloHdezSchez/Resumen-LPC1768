@@ -7,12 +7,14 @@ Resumen de los registros más importantes del microcontrolador **LPC1768 (ARM Co
 ## 🔹 System Control
 
 ### Power Control
+
 | Registro | Dirección | Función |
 |-----------|-----------|---------|
 | **PCON** | 0x400FC0C0 | Control de energía |
 | **PCONP** | 0x400FC0C4 | Control de energía de periféricos |
 
-#### PCONP - Bits importantes:
+#### PCONP - Bits importantes
+
 - Bit 1: PCTIM0 (Timer 0)
 - Bit 2: PCTIM1 (Timer 1)
 - Bit 3: PCUART0 (UART0)
@@ -26,19 +28,22 @@ Resumen de los registros más importantes del microcontrolador **LPC1768 (ARM Co
 - Bit 25: PCUART3 (UART3)
 
 ### Clock Control
+
 | Registro | Dirección | Función |
 |-----------|-----------|---------|
 | **CCLKCFG** | 0x400FC104 | Divisor del CPU clock |
 | **PCLKSEL0** | 0x400FC1A8 | Divisor de clock para periféricos (0-15) |
 | **PCLKSEL1** | 0x400FC1AC | Divisor de clock para periféricos (16-31) |
 
-#### Valores de PCLKSEL:
+#### Valores de PCLKSEL
+
 - 00: PCLK = CCLK/4
 - 01: PCLK = CCLK
 - 10: PCLK = CCLK/2
 - 11: PCLK = CCLK/8
 
 ##### Algunos bits importantes
+
 - Bit 1:0: PCLK_WDT (Peripheral clock selection for WDT.)
 - Bit 3:2: PCLK_TIMER0
 - Bit 5:4: PCLK_TIMER1
@@ -58,6 +63,7 @@ LPC_SC->PCLKSEL0 |=  ((0x2 << 2) | (0x1 << 6));  // Timer0=CCLK/2, UART0=CCLK
 ## 🔹 GPIO (General Purpose I/O)
 
 ### Pin Function Select
+
 | Registro | Dirección | Rango de Pines |
 |-----------|-----------|----------------|
 | **PINSEL0** | 0x4002C000 | P0[15:0] |
@@ -66,7 +72,8 @@ LPC_SC->PCLKSEL0 |=  ((0x2 << 2) | (0x1 << 6));  // Timer0=CCLK/2, UART0=CCLK
 | **PINSEL3** | 0x4002C00C | P1[31:16] |
 | **PINSEL4** | 0x4002C010 | P2[15:0] |
 
-#### Valores PINSEL (2 bits por pin):
+#### Valores PINSEL (2 bits por pin)
+
 - 00: GPIO
 - 01: Función alternativa 1
 - 10: Función alternativa 2
@@ -83,17 +90,20 @@ LPC_GPIO0->FIODIR   |=  (1u<<10);
 ```
 
 ### Pin Mode (Pull-up/Pull-down)
+
 | Registro | Dirección | Función |
 |-----------|-----------|---------|
 | **PINMODE0-9** | 0x4002C040-0x4002C064 | Modo de pull para cada pin |
 
-#### Valores PINMODE:
+#### Valores PINMODE
+
 - 00: Pull-up habilitado
 - 01: Repetidor
 - 10: Sin pull
 - 11: Pull-down habilitado
 
 ### Fast GPIO (Puertos 0-4)
+
 | Registro | Dirección Base | Función |
 |-----------|----------------|---------|
 | **FIO0DIR** | 0x2009C000 | Dirección Puerto 0 (1=salida, 0=entrada) |
@@ -102,13 +112,15 @@ LPC_GPIO0->FIODIR   |=  (1u<<10);
 | **FIO0SET** | 0x2009C018 | Set bits Puerto 0 |
 | **FIO0CLR** | 0x2009C01C | Clear bits Puerto 0 |
 
-#### Para otros puertos:
+#### Para otros puertos
+
 - Puerto 1: Base + 0x20 (0x2009C020)
 - Puerto 2: Base + 0x40 (0x2009C040)
 - Puerto 3: Base + 0x60 (0x2009C060)
 - Puerto 4: Base + 0x80 (0x2009C080)
 
 **Ejemplo de uso:**
+
 ```c
 FIO0DIR |= (1 << 22);    // P0.22 como salida
 FIO0SET |= (1 << 22);    // P0.22 = HIGH
@@ -118,18 +130,24 @@ FIO0CLR |= (1 << 22);    // P0.22 = LOW
 ---
 
 ## 🔹 Timers (Timer 0-3)
+
 ### Intro
+
 Los Timer 0,1,2 y 3 son periféricos configurados usando los siguientes registros:
+
 1. Power: Mediante el registro PCONP (Al hacer reset, los registros 0 y 1 están activados. Los otros NO)
 2. Peripheral Clock: Hay que ajustar el valor de PCLKSEL0 para Timers 0-1 y PCLKSEL1 para Timers 2-3
 3. Pins: Seleccionar los pines de timer mediante el registro PINSEL y PINMODE
 4. Interrupt: Ver los registros T0/1/2/3MCR y T0/1/2/3CCR para match y capture. Las interrupciones son habilitadas en el NVIC usando el registro de interrupcion adecuado.
+
 ```c
 NVIC_EnableIRQ(TIMER0_IRQn);  // habilita interrupción de Timer0
 ```
+
 5. DMA: Hasta dos de esos eventos de “match” pueden configurarse para disparar una solicitud DMA (Direct Memory Access).
 
 ### Registros Base
+
 | Timer | Dirección Base |
 |-------|----------------|
 | Timer 0 | 0x40004000 |
@@ -138,6 +156,7 @@ NVIC_EnableIRQ(TIMER0_IRQn);  // habilita interrupción de Timer0
 | Timer 3 | 0x40094000 |
 
 ### Registros de Control
+
 | Registro | Offset | Función |
 |-----------|--------|---------|
 | **IR** | +0x00 | Interrupt Register - Muestra qué evento produjo la interrupción (Se limpia escribiendo 1) |
@@ -153,18 +172,20 @@ NVIC_EnableIRQ(TIMER0_IRQn);  // habilita interrupción de Timer0
 | **CTCR** | +0x70 | Count Control Register - Selecciona modo Timer o Counter y fuente externa |
 | **PWMC** | +0x74 | PWM Control - Habilita salida PWM simple en coincidencias MRx |
 
+#### TCR - Bits importantes
 
-#### TCR - Bits importantes:
 - Bit 0: Counter Enable (1=enable, 0=disable)
 - Bit 1: Counter Reset (1=reset)
 
-#### MCR - Match Control:
+#### MCR - Match Control
+
 - Bits 0-2: MR0 (Interrupt, Reset, Stop)
 - Bits 3-5: MR1 (Interrupt, Reset, Stop)
 - Bits 6-8: MR2 (Interrupt, Reset, Stop)
 - Bits 9-11: MR3 (Interrupt, Reset, Stop)
 
 #### CCR - Capture Control Register
+
 | Bits | Función                                  |
 | ---- | ---------------------------------------- |
 | 0    | Captura en flanco ascendente en CAPn.0   |
@@ -175,27 +196,31 @@ NVIC_EnableIRQ(TIMER0_IRQn);  // habilita interrupción de Timer0
 | 9–11 | Igual para CAPn.3                        |
 
 #### EMR - External Match Register
+
 Permite que las salidas MATn.0-MATn.3 cambien de estado automáticamente al producirse una coincidencia.
+
 | Bits | Campo     | Descripción                                                            |
 | ---- | --------- | ---------------------------------------------------------------------- |
 | 0–3  | EM0–EM3   | Estado actual de las salidas externas (lectura/escritura)              |
 | 4–11 | EMC0–EMC3 | 00 = Sin acción, 01 = Clear, 10 = Set, 11 = Toggle en coincidencia MRx |
 
 #### CTCR - Count Control Register
+
 | Bits | Campo            | Descripción                                                                                                                          |
 | ---- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | 1:0  | **Mode**         | 00 = Timer (usa PCLK)<br>01 = Counter por flanco ascendente<br>10 = Counter por flanco descendente<br>11 = Counter por ambos flancos |
 | 3:2  | **Input Select** | Selecciona cuál entrada CAPn.x se usa como fuente de conteo externo                                                                  |
 
-
 #### PWMC - PWM Control Register
+
 Permite generar PWM básico con el propio temporizador, sin usar el periférico PWM1 completo.
+
 | Bits | Campo  | Descripción                  |
 | ---- | ------ | ---------------------------- |
 | 0–3  | PWMENx | 1 = habilita modo PWM en MRx |
 
-
 **Ejemplo Timer básico:**
+
 ```c
 // Supone PCLK_TIMER0 = 25 MHz
 LPC_SC->PCONP |= (1 << 1);        // Alimenta TIMER0
@@ -220,6 +245,7 @@ void TIMER0_IRQHandler(void) {
 ## 🔹 UART (0-3)
 
 ### Registros Base
+
 | UART | Dirección Base |
 |------|----------------|
 | UART0 | 0x4000C000 |
@@ -228,6 +254,7 @@ void TIMER0_IRQHandler(void) {
 | UART3 | 0x4009C000 |
 
 ### Registros Principales
+
 | Registro | Offset | Función |
 |-----------|--------|---------|
 | **RBR** | +0x00 | Receiver Buffer (solo lectura) |
@@ -240,19 +267,22 @@ void TIMER0_IRQHandler(void) {
 | **LCR** | +0x0C | Line Control Register |
 | **LSR** | +0x14 | Line Status Register |
 
-#### LCR - Line Control:
+#### LCR - Line Control
+
 - Bits 0-1: Word Length (00=5bits, 01=6bits, 10=7bits, 11=8bits)
 - Bit 2: Stop bits (0=1bit, 1=2bits)
 - Bit 3: Parity Enable
 - Bit 4: Parity Select (0=odd, 1=even)
 - Bit 7: DLAB (Divisor Latch Access Bit)
 
-#### LSR - Line Status:
+#### LSR - Line Status
+
 - Bit 0: RDR (Receiver Data Ready)
 - Bit 5: THRE (Transmitter Holding Register Empty)
 - Bit 6: TEMT (Transmitter Empty)
 
 **Configuración UART básica:**
+
 ```c
 // UART0 @ 9600 baud, 25MHz PCLK
 U0LCR = 0x83;        // 8N1, DLAB=1
@@ -265,23 +295,28 @@ U0FCR = 0x07;        // Enable FIFO
 ---
 
 ## 🔹 PWM1
+
 ### Intro
+
 El PWM se configura usando los siguientes registros
+
 1. Power: En el registro PCONP, poner el bit PCPWM1 (En reset ya está a 1)
 2. Peripheral Clock: En el registro PCLKSEL0, seleccionar PCLK_PWM1.
 3. PINS: Seleccionar los pines PWM mediante los registros PINSEL. Seleccionar los pin modes con las funciones PWM1 mediante PINMODE.
 4. Interrupts: Ver los registros PWM1MCR y PWM1CCR. Habilitar las interrupciones NVIC.
+
 ```c
 NVIC_EnableIRQ(PWM1_IRQn);
 ```
 
-### Dirección Base:
+### Dirección Base
+
 | Periférico | Dirección base |
 | ---------- | -------------- |
 | **PWM1**   | `0x4001 8000`  |
 
-
 ### Registros de Control
+
 | Registro | Offset | Descripción |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------- |
 | **IR**      | +0x00      | Interrupt Register – bandera de interrupciones por match/capture (se limpia escribiendo 1). |
@@ -296,10 +331,10 @@ NVIC_EnableIRQ(PWM1_IRQn);
 | **CTCR**    | +0x70      | Count Control Register – modo Timer o Counter.                                              |
 | **PWMC**    | +0x74      | PWM Mode Control – activa modo PWM general. *(En LPC1768 ya se gestiona desde TCR)*         |
 
-
 ### Detalles Registros
 
 #### TCR - Timer Control Register
+
 | Bit | Nombre                  | Función                                        |
 | :-: | :---------------------- | :--------------------------------------------- |
 |  0  | **Counter Enable (CE)** | 1 = habilita contador                          |
@@ -309,21 +344,24 @@ NVIC_EnableIRQ(PWM1_IRQn);
 En modo PWM, se suele escribir TCR = 0x09 (bits 3 y 0 activos).
 
 #### MCR - Match Control Register
+
 |  Bits | Función            |
 | :---: | :----------------- |
 | [0–2] | MR0I / MR0R / MR0S |
 | [3–5] | MR1I / MR1R / MR1S |
 |  ...  | ...                |
 
+#### PCR - PWM Control
 
-#### PCR - PWM Control:
 |  Bit | Nombre              | Descripción                      |
 | :--: | :------------------ | :------------------------------- |
 | 9–14 | **PWMENA1–PWMENA6** | 1 = activa cada salida PWM1.x    |
 |  2–6 | **PWMSELx**         | 0 = single edge, 1 = double edge |
 
-#### LER - Load Enable:
+#### LER - Load Enable
+
 Permite actualizar MRx de forma segura
+
 | Bit | Significado   |
 | --- | ------------- |
 | 0   | Carga MR0     |
@@ -332,6 +370,7 @@ Permite actualizar MRx de forma segura
 Hay que escribir 1 en el bit correspondiente después de modificar MRx, para que el nuevo valor se aplique al final del ciclo PWM actual.
 
 #### IR - Interrupt Register
+
 | Bit | Evento               |
 | --- | -------------------- |
 | 0–6 | MR0–MR6 coincidencia |
@@ -341,7 +380,9 @@ Hay que escribir 1 en el bit correspondiente después de modificar MRx, para que
 Se limpia escribiendo un 1 en el bit correspondiente.
 
 #### CCR - Capture Control Register
+
 Usado si se emplea la función de captura (CAP1.0, CAP1.1):
+
 | Bit | Descripción                |
 | --- | -------------------------- |
 | 0   | Captura flanco ascendente  |
@@ -350,6 +391,7 @@ Usado si se emplea la función de captura (CAP1.0, CAP1.1):
 | 3–5 | Igual para CAP1.1          |
 
 **Ejemplo PWM:**
+
 ```c
 #include "LPC17xx.h"
 
@@ -380,7 +422,28 @@ int main(void) {
   NVIC_EnableIRQ(PWM1_IRQn);
   while(1);
 }
+```
 
+**Ejemplo Timer Servomotor**
+Produce un tiempo en alto entre 0.3 y 2.1 (1.8 + 0.3).
+
+```c
+#define fpCLK 25e6
+#define Tpwm 15e-3
+
+void config_pwm2(void){
+  LPC_PINCON->PINSEL3 |= (2<<8);
+  LPC_SC->PCOMP |= (1<<6);
+  LPC_PWM1->MR0 = Fpclk*Tpwm-1;
+  LPC_PWM1->PCR |= (1<<10);
+  LPC_PWM1->MCR |= (1<<1);
+  LPC_PWM1->TCR |= (1<<0) | (1<<3);
+}
+
+void set_servo(float grados){
+  LPC_PWM1->MR2=(Fpclk*0.3e-3 + Fpclk*1.8e-3*grados/180);
+  LPC_PWM1->LER |= (1 << 2) | (1 << 0);
+}
 ```
 
 ---
@@ -390,6 +453,7 @@ int main(void) {
 ### Dirección Base: 0x40034000
 
 ### Registros Principales
+
 | Registro | Offset | Función |
 |-----------|--------|---------|
 | **ADCR** | +0x00 | Control Register |
@@ -398,7 +462,8 @@ int main(void) {
 | **ADDR0-ADDR7** | +0x10-0x2C | Data Registers (canales 0-7) |
 | **ADSTAT** | +0x30 | Status Register |
 
-#### ADCR - Control Register:
+#### ADCR - Control Register
+
 - Bits 0-7: SEL (Selección de canal)
 - Bits 8-15: CLKDIV (Divisor de clock)
 - Bit 16: BURST (Modo burst)
@@ -407,13 +472,15 @@ int main(void) {
 - Bits 24-26: START (Control de inicio)
 - Bit 27: EDGE (Flanco para inicio externo)
 
-#### Bits de resultado (ADGDR/ADDRx):
+#### Bits de resultado (ADGDR/ADDRx)
+
 - Bits 4-15: RESULT (Resultado 12-bit)
 - Bits 24-26: CHN (Canal que generó el resultado)
 - Bit 30: OVERRUN (Sobrescritura)
 - Bit 31: DONE (Conversión completa)
 
 **Configuración ADC:**
+
 ```c
 ADCR = 0x00200401;   // Canal 0, CLKDIV=4, PDN=1
 ADCR |= 0x01000000;  // START=001 (inicio inmediato)
@@ -426,6 +493,7 @@ result = (ADGDR >> 4) & 0xFFF;
 ## 🔹 Interrupciones (NVIC)
 
 ### Vector Interrupt Controller
+
 | Registro | Dirección | Función |
 |-----------|-----------|---------|
 | **ISER0** | 0xE000E100 | Interrupt Set-Enable (0-31) |
@@ -436,6 +504,7 @@ result = (ADGDR >> 4) & 0xFFF;
 | **ICPR0** | 0xE000E280 | Interrupt Clear-Pending (0-31) |
 
 ### Interrupciones Principales del LPC1768
+
 | IRQ# | Nombre | Descripción |
 |------|--------|-------------|
 | 1 | TIMER0_IRQn | Timer 0 |
@@ -450,6 +519,7 @@ result = (ADGDR >> 4) & 0xFFF;
 | 22 | ADC_IRQn | ADC |
 
 **Habilitar interrupción:**
+
 ```c
 NVIC_EnableIRQ(TIMER0_IRQn);  // Habilitar Timer0
 ```
@@ -459,6 +529,7 @@ NVIC_EnableIRQ(TIMER0_IRQn);  // Habilitar Timer0
 ## 🔹 SysTick Timer
 
 ### Registros (Base: 0xE000E010)
+
 | Registro | Offset | Función |
 |-----------|--------|---------|
 | **CTRL** | +0x00 | Control y Status |
@@ -466,13 +537,15 @@ NVIC_EnableIRQ(TIMER0_IRQn);  // Habilitar Timer0
 | **VAL** | +0x08 | Current Value |
 | **CALIB** | +0x0C | Calibration |
 
-#### CTRL bits:
+#### CTRL bits
+
 - Bit 0: ENABLE (Habilitar contador)
 - Bit 1: TICKINT (Habilitar interrupción)
 - Bit 2: CLKSOURCE (1=CPU clock, 0=external)
 - Bit 16: COUNTFLAG (Se puso en 0)
 
 **SysTick a 1ms:**
+
 ```c
 SysTick->LOAD = 24999;    // 1ms @ 25MHz
 SysTick->CTRL = 0x07;     // Enable, Interrupt, CPU clock
@@ -491,11 +564,13 @@ SysTick->CTRL = 0x07;     // Enable, Interrupt, CPU clock
 | **WDFEED** | +0x08 | Feed Sequence |
 | **WDTV** | +0x0C | Timer Value |
 
-#### WDMOD bits:
+#### WDMOD bits
+
 - Bit 0: WDEN (Watchdog enable)
 - Bit 1: WDRESET (Reset enable)
 
 **Feed del Watchdog:**
+
 ```c
 WDFEED = 0xAA;
 WDFEED = 0x55;
@@ -506,6 +581,7 @@ WDFEED = 0x55;
 ## 🔹 I2C (I2C0, I2C1, I2C2)
 
 ### Registros Base
+
 | I2C | Dirección Base |
 |-----|----------------|
 | I2C0 | 0x4001C000 |
@@ -513,6 +589,7 @@ WDFEED = 0x55;
 | I2C2 | 0x400A0000 |
 
 ### Registros Principales
+
 | Registro | Offset | Función |
 |-----------|--------|---------|
 | **CONSET** | +0x00 | Control Set |
@@ -528,12 +605,14 @@ WDFEED = 0x55;
 ## 🔹 SPI (SSP0, SSP1)
 
 ### Registros Base
+
 | SPI | Dirección Base |
 |-----|----------------|
 | SSP0 | 0x40088000 |
 | SSP1 | 0x40030000 |
 
 ### Registros Principales
+
 | Registro | Offset | Función |
 |-----------|--------|---------|
 | **CR0** | +0x00 | Control Register 0 |
@@ -547,6 +626,7 @@ WDFEED = 0x55;
 ## 📖 Referencias y Ejemplos
 
 ### Configuración de Pins Común
+
 ```c
 // UART0 en P0.2 (TXD) y P0.3 (RXD)
 PINSEL0 |= (1 << 4) | (1 << 6);  // Función 01 para ambos pins
@@ -559,21 +639,25 @@ PINSEL1 |= (1 << 14);  // Función 01
 ```
 
 ### Cálculo de Baudrate UART
+
 **Fórmula:** `Baudrate = PCLK / (16 × (256 × DLM + DLL))`
 
 Para 9600 baud con PCLK = 25MHz:
+
 - DLL = 162, DLM = 0
 
 ### Cálculo de Frecuencia PWM
+
 **Fórmula:** `Frecuencia = PCLK / MR0`
 
 Para 1kHz con PCLK = 25MHz:
+
 - MR0 = 25000
 
 ---
 
 **Referencias:**
+
 - UM10360 – LPC176x/5x User Manual (NXP Semiconductors)
 - ARM Cortex-M3 Technical Reference Manual
 - LPC1768 Datasheet
-
