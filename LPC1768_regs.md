@@ -240,9 +240,29 @@ void TIMER0_IRQHandler(void) {
 }
 ```
 
+### Formula
+
+- Formula base:
+`f = PCLK / ((PR + 1) * (MR + 1))`
+
 ---
 
 ## 🔹 UART (0-3)
+
+### Intro
+
+Las UART0, UART2 y UART3 del LPC1768 son interfaces de comunicación serie asíncrona con FIFO de 16 bytes en TX y RX, generador de baudios programable y funcionamiento por interrupciones. La UART1 es muy parecida pero añade señales de módem y soporte RS-485.
+
+Para usar cualquier UART hay que seguir siempre esta secuencia:
+
+1. Power: Mediante el registro PCONP. Ajustar los bits PCUART0/2/3.
+2. Peripheral Clock.
+3. Baud rate. En los registros U0/2/3LCR. Poner el bit DLAB = 1. Esto habilita el acceso a los registros DLL y DLM para ajustar el baudrate. De ser necesario, ajusta el baudrate fracional en el registro divisor fraccional.
+4. UART FIFO.
+5. PINS. Seleciona los pines UART a traves de los registros PINSEL y PINMODE. **Importante no poner resistencias pull-down**
+6. Interrupciones. Habilitar las interrupciones UART poner el bit DLAB = 0 en el registro U0/2/3LCR. Esto habilita el acceso a U0/2/3IER. No olvidar habilitar las interrupciones con NVIC.
+7. DMA: UART0/2/3 las operaciones de transmitir y recibir pueden operar con el controlador GPMA.
+
 
 ### Registros Base
 
@@ -255,41 +275,116 @@ void TIMER0_IRQHandler(void) {
 
 ### Registros Principales
 
-| Registro | Offset | Función |
-|-----------|--------|---------|
-| **RBR** | +0x00 | Receiver Buffer (solo lectura) |
-| **THR** | +0x00 | Transmit Holding (solo escritura) |
-| **DLL** | +0x00 | Divisor Latch LSB (cuando DLAB=1) |
-| **DLM** | +0x04 | Divisor Latch MSB (cuando DLAB=1) |
-| **IER** | +0x04 | Interrupt Enable Register |
-| **IIR** | +0x08 | Interrupt ID Register |
-| **FCR** | +0x08 | FIFO Control Register |
-| **LCR** | +0x0C | Line Control Register |
-| **LSR** | +0x14 | Line Status Register |
+| Registro            | Offset                        | Función                                                                                                                            |
+| ------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **RBR / THR / DLL** | +0x00                         | RBR: dato recibido (solo lectura). THR: dato a transmitir (solo escritura). DLL: byte bajo del divisor de baudios (cuando DLAB=1). |
+| **DLM / IER**       | +0x04                         | DLM: byte alto del divisor (DLAB=1). IER: habilitación de interrupciones (DLAB=0).                                                 |
+| **IIR / FCR**       | +0x08                         | IIR: identifica la causa de la interrupción. FCR: habilita y configura FIFO.                                                       |
+| **LCR**             | +0x0C                         | Line Control: formato de la trama y DLAB.                                                                                          |
+| **LSR**             | +0x14                         | Line Status: estado de RX/TX y errores.                                                                                            |
+| **FDR**             | +0x28 aprox.                  | Fractional Divider Register: mejora la precisión del baud rate.                                                                    |
+| **TER**             | (UART0/2/3 no siempre se usa) | Transmit Enable.                                                                                                                   |
 
 #### LCR - Line Control
 
 - Bits 0-1: Word Length (00=5bits, 01=6bits, 10=7bits, 11=8bits)
 - Bit 2: Stop bits (0=1bit, 1=2bits)
 - Bit 3: Parity Enable
-- Bit 4: Parity Select (0=odd, 1=even)
-- Bit 7: DLAB (Divisor Latch Access Bit)
+- Bits 5:4 – Parity Select: 00=par, 01=impar, 10=forzado ‘1’, 11=forzado ‘0’.
+- Bit 6 – Break Control: fuerza TX a ‘0’.
+- Bit 7 – DLAB: 1 = acceso a DLL/DLM, 0 = acceso normal a THR/RBR/IER.
+
+Esto es clave: para poner el baud rate pones DLAB=1, y para enviar/recibir lo bajas otra vez a 0.
 
 #### LSR - Line Status
 
-- Bit 0: RDR (Receiver Data Ready)
-- Bit 5: THRE (Transmitter Holding Register Empty)
-- Bit 6: TEMT (Transmitter Empty)
+- Bit 0 (RDR): hay dato en RX (FIFO no vacía).
+- Bit 1 (OE): overrun (llegó otro byte y no habías leído el anterior).
+- Bit 2 (PE): error de paridad.
+- Bit 3 (FE): framing error (bit de stop incorrecto).
+- Bit 4 (BI): break.
+- Bit 5 (THRE): THR vacío → puedes escribir otro byte.
+- Bit 6 (TEMT): transmisor completamente vacío (THR y shift).
+- Bit 7: indica que ha ocurrido algún error de línea.
 
-**Configuración UART básica:**
+Estos bits son los que miras en la ISR cuando IIR te dice “RLS”.
+
+#### FCR - FIFO Control
+
+- Bit 0 – FIFO Enable: 1 = activa FIFO RX/TX (siempre ponerlo).
+- Bit 1 – RX FIFO Reset: 1 = vacía FIFO RX.
+- Bit 2 – TX FIFO Reset: 1 = vacía FIFO TX.
+- Bit 3 – DMA mode: 1 = peticiones DMA.
+- Bits 7:6 – RX Trigger Level: 00=1 byte, 01=4, 10=8, 11=14 → cuándo quiero interrupción de RX.
+
+Esto permite, por ejemplo, que no te interrumpa por cada byte, sino cuando haya 4 u 8.
+
+Uso típico:
+```c
+LPC_UART0->FCR = (1<<0) | (1<<1) | (1<<2);   // FIFO on + reset RX + reset TX
+// (luego puedes volver a escribir sin los reset si quieres configurar el trigger)
+```
+
+#### IER / IIR – Interrupciones
+
+##### IER (Interrupt Enable Register), con DLAB=0:
+
+- Bit 0 – RDA: dato recibido disponible.
+- Bit 1 – THRE: transmisor vacío.
+- Bit 2 – RLS: error de línea.
+- Bits 8 y 9 – ABEO / ABTO (auto baud).
+
+##### IIR (Interrupt Identification Register) te dice qué ha pasado:
+
+- 0x04 → RDA (hay dato en RX)
+- 0x02 → THRE (puedes mandar más)
+- 0x06 → RLS (error de línea)
+- 0x0C → CTI (Character Timeout). Para saberlo, se suele hacer switch(U0IIR & 0x0E).
+
+No olvidar habilitar también en NVIC la IRQ concreta: UART0_IRQn, UART1_IRQn, UART2_IRQn, UART3_IRQn.
+
+### Generador de Bauidios
+1. La UART recibe un reloj: PCLK_UARTn
+2. Ese reloj se divide primero por 16 internamente.
+3. Luego se aplica el divisor de 16 bits(DLL:DLM)
+4. Opcionalmente se afina con el divisor fraccional FDR (DIVADDVAL, MULVAL);
+
+La fórmula completa es la siguiente:
+
+`Baud = PCLK / (16 * DLL_DLM * (1 + DIVADDVAL/MULVAL))`
+
+Siendo:
+- DLL_DLM = 256 * DLM + DLL
+- DIVADDVAL = FDR[3:0]
+- MULVAL = FDR[7:4]
+
+Reglas del FDR:
+- 1 <= MULVAL <= 15
+- 0 <= DIVADDVAL <= 14
+
+### Ejemplo
 
 ```c
-// UART0 @ 9600 baud, 25MHz PCLK
-U0LCR = 0x83;        // 8N1, DLAB=1
-U0DLL = 162;         // Baudrate = 9600
-U0DLM = 0;
-U0LCR = 0x03;        // DLAB=0
-U0FCR = 0x07;        // Enable FIFO
+// Supongamos: PCLK_UART0 = 25 MHz y quiero 9600 baudios
+// 1) Formato + DLAB=1
+LPC_UART0->LCR = 0x83;      // 8 bits, sin paridad, 1 stop, DLAB=1
+
+// 2) Divisor entero (sin fraccional)
+LPC_UART0->DLM = 0;
+LPC_UART0->DLL = 162;       // 25 MHz / (16 * 162) ≈ 9603 baudios
+
+// 3) Opcional: FDR por defecto --> mejor no tocar
+LPC_UART0->FDR = (1<<4) | 0;  // MULVAL=1, DIVADDVAL=0
+
+// 4) Volver a modo normal (acceso a THR/RBR/IER)
+LPC_UART0->LCR = 0x03;      // 8N1, DLAB=0
+
+// 5) Activar FIFO
+LPC_UART0->FCR = 0x07;      // FIFO en RX/TX y reset
+
+// 6) (Opcional) Interrupciones
+LPC_UART0->IER = (1<<0);    // interrupción por dato recibido
+NVIC_EnableIRQ(UART0_IRQn);
 ```
 
 ---
