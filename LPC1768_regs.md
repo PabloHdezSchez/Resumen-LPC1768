@@ -244,6 +244,8 @@ void TIMER0_IRQHandler(void) {
 
 - Formula base:
   `f = PCLK / ((PR + 1) * (MR + 1))`
+- MRx en funcion de la frecuencia deseada:
+  `MRx = (PCLK / ((PR + 1) * f)) - 1`
 
 ---
 
@@ -343,7 +345,7 @@ LPC_UART0->FCR = (1<<0) | (1<<1) | (1<<2);   // FIFO on + reset RX + reset TX
 
 No olvidar habilitar también en NVIC la IRQ concreta: UART0_IRQn, UART1_IRQn, UART2_IRQn, UART3_IRQn.
 
-### Generador de Bauidios
+### Generador de Baudios
 
 1. La UART recibe un reloj: PCLK_UARTn
 2. Ese reloj se divide primero por 16 internamente.
@@ -526,20 +528,20 @@ int main(void) {
 Produce un tiempo en alto entre 0.3 y 2.1 (1.8 + 0.3).
 
 ```c
-#define fpCLK 25e6
-#define Tpwm 15e-3
+#define FPCLK 25e6
+#define TPWM 15e-3
 
 void config_pwm2(void){
   LPC_PINCON->PINSEL3 |= (2<<8);
-  LPC_SC->PCOMP |= (1<<6);
-  LPC_PWM1->MR0 = Fpclk*Tpwm-1;
+  LPC_SC->PCONP |= (1<<6);
+  LPC_PWM1->MR0 = FPCLK*TPWM-1;
   LPC_PWM1->PCR |= (1<<10);
   LPC_PWM1->MCR |= (1<<1);
   LPC_PWM1->TCR |= (1<<0) | (1<<3);
 }
 
 void set_servo(float grados){
-  LPC_PWM1->MR2=(Fpclk*0.3e-3 + Fpclk*1.8e-3*grados/180);
+  LPC_PWM1->MR2=(FPCLK*0.3e-3 + FPCLK*1.8e-3*grados/180);
   LPC_PWM1->LER |= (1 << 2) | (1 << 0);
 }
 ```
@@ -859,8 +861,8 @@ El modo linked lo que hace es: cuando termines este bloque, carga automáticamen
 2. Reconfiguración automática: cuando el canal termina una transferencia, el DMA lee el LLI apuntado en DMACCxLLI y se reprograma solo con esos datos. No hace falta que la CPU vuelva a escribir los registros del canal.
 3. Cadena de bloques: puedes encadenar varios LLI (LLI1 → LLI2 → LLI3 → 0) para hacer varias transferencias distintas seguidas. Si el último LLI apunta a 0, la cadena acaba.
 4. Scatter/Gather real: cada LLI puede tener tamaños y direcciones diferentes, así que puedes:
-  4_1. juntar datos dispersos de memoria (scatter → 1 destino),
-  4_2. o repartir un bloque a varios sitios (gather → varios destinos).
+   4_1. juntar datos dispersos de memoria (scatter → 1 destino),
+   4_2. o repartir un bloque a varios sitios (gather → varios destinos).
 5. Menos carga de CPU: la CPU solo prepara los LLI al principio; después el DMA va “consumiéndolos” solo.
 6. Máx. 4095 por bloque: cada LLI sigue limitado al tamaño máximo de transferencia del DMA; para más datos, se trocea en varios LLI.
 7. IRQ por bloque (opcional): si pones el bit I en el Control del LLI, tienes interrupción justo al terminar ese bloque concreto.
@@ -1026,7 +1028,7 @@ Para 9600 baud con PCLK = 25MHz:
 
 ### Cálculo de Frecuencia PWM
 
-**Fórmula:** `Frecuencia = PCLK / MR0`
+**Fórmula:** `Frecuencia_PWM = PCLK / ((PR + 1) * (MR0 + 1))`
 
 Para 1kHz con PCLK = 25MHz:
 
