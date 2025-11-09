@@ -757,6 +757,117 @@ LPC_DAC->DACR = (value10 << 6) | (0 << 16);
 
 ---
 
+## DMA (GPDMA)
+
+### Intro
+
+El LPC1768 lleva un controlador DMA genérico (GPDMA) capaz de mover datos entre memoria y periféricos sin pasar por la CPU, de forma que el Cortex-M3 puede seguir ejecutando código mientras el DMA hace las transferencias. Tiene estas características clave:
+
+- 8 canales independientes de DMA (unidireccionales), cada uno con su propia configuración.
+- Transferencias Mem↔Mem, Mem↔Periférico y Periférico↔Periférico.
+- FIFO de 4 palabras por canal para suavizar ráfagas.
+- Hasta 16 líneas de petición de periférico (UARTs, ADC, DAC, SSP/I2S, timers por match, GPIO…).
+- Transferencias de 8, 16 o 32 bits y tamaño de bloque de hasta 4095 unidades.
+- Prioridades configurables y interrupción por fin de transferencia o por error.
+- Scatter/Gather mediante Linked List Item (LLI) para encadenar bloques no contiguos.
+
+La secuencia típica es:
+
+1. Alimentar/activar el GPDMA ( PCGPDMA in PCONP).
+2. Habilitar el GPDMA globalmente.
+3. Configurar dirección origen/destino del canal.
+4. Configurar control (tamaño, ancho, incrementos).
+5. Configurar el tipo de transferencia y la línea de petición (si hay periférico).
+6. Habilitar el canal.
+7. Atender la IRQ de “terminal count” o “error” si se ha habilitado.
+
+### Registros Base
+
+| Bloque      | Dirección base      |
+| ----------- | ------------------- |
+| **GPDMA**   | **0x5000 0000**     |
+| **Canal 0** | 0x5000 0200         |
+| **Canal 1** | 0x5000 0220         |
+| …           | … (cada 0x20 bytes) |
+
+### Registros Principales
+
+| Registro                                | Función                                                |
+| --------------------------------------- | ------------------------------------------------------ |
+| **DMACIntStat**                         | Interrupciones activas (todos los canales).            |
+| **DMACIntTCStat**                       | “Terminal Count” activo (fin de transferencia).        |
+| **DMACIntTCClear**                      | Se escribe 1 para limpiar el TC de un canal.           |
+| **DMACIntErrStat**                      | Interrupciones por error.                              |
+| **DMACIntErrClr**                       | Se escribe 1 para limpiar el error de un canal.        |
+| **DMACRawIntTC**                        | Estado bruto de TC.                                    |
+| **DMACRawIntErr**                       | Estado bruto de error.                                 |
+| **DMACEnbldChns**                       | Qué canales están habilitados.                         |
+| **DMACSoftBReq / SReq / LBReq / LSReq** | Peticiones de DMA por software (burst o single).       |
+| **DMACConfig**                          | Bit 0 = habilita el GPDMA.                             |
+| **DMACSync**                            | Sincronización con peticiones externas (timers, etc.). |
+
+### Registros por Canal
+
+| Registro           | Función                                                                  |
+| ------------------ | ------------------------------------------------------------------------ |
+| **DMACCxSrcAddr**  | Dirección origen (memoria o registro de periférico).                     |
+| **DMACCxDestAddr** | Dirección destino.                                                       |
+| **DMACCxLLI**      | Dirección del siguiente descriptor (para scatter/gather). 0 = no hay.    |
+| **DMACCxControl**  | Tamaño de la transferencia, anchos, incrementos, interrupción.           |
+| **DMACCxConfig**   | Tipo de transferencia, líneas de req. de periféricos, prioridad, enable. |
+
+#### DMACCxControl bits
+
+Este registro define cómo mueve los datos el canal:
+
+- bits 11:0 – TransferSize: cuántos elementos transfiero (1…4095).
+- bits 14:12 – SBSize: burst en origen (nº de transferencias por ráfaga).
+- bits 17:15 – DBSize: burst en destino.
+- bits 20:18 – SWidth: ancho en origen (0=8b, 1=16b, 2=32b).
+- bits 23:21 – DWidth: ancho en destino.
+- bit 26 – SI: incrementa dirección de origen después de cada elemento.
+- bit 27 – DI: incrementa dirección de destino.
+- bit 31 – I: generar interrupción “terminal count” al terminar.
+
+Ejemplo típico Mem→peri: SI=1 (avanzo en memoria), DI=0 (escribo siempre en el mismo registro del periférico).
+
+#### DMACCxConfig bits
+
+- bits 1:0 – E / SrcPeripheral / DestPeripheral según tabla del manual.
+- bits 5:1: número de periférico origen.
+- bits 10:6: número de periférico destino.
+- bit 11 – FlowCntrl: quién controla la transferencia (DMA o periférico).
+- bit 14 – IE: interrupción por error.
+- bit 15 – ITC: interrupción por terminal count.
+- bit 0 – EN: habilita el canal.
+
+### Modos de transferencia
+
+- Mem→Mem: no usas líneas de periférico; SI=1, DI=1.
+- Mem→Periférico: SI=1, DI=0, seleccionas periférico como destino.
+- Periférico→Mem: SI=0, DI=1, seleccionas periférico como origen.
+- Periférico→Periférico: SI=0, DI=0, defines ambos periféricos en Config.
+
+Todos están soportados por el GPDMA del LPC17xx
+
+### Modo Linked
+
+un canal DMA normalmente sabe mover “un bloque” (origen, destino, tamaño, cómo incrementar). Cuando termina, se para.
+El modo linked lo que hace es: cuando termines este bloque, carga automáticamente otra configuración de bloque y sigue sin que la CPU haga nada.
+
+1. LLI = Linked List Item: es una estructura en RAM que guarda una “tarea de DMA” completa: origen, destino, siguiente LLI y control (tamaño, anchos, SI/DI).
+2. Reconfiguración automática: cuando el canal termina una transferencia, el DMA lee el LLI apuntado en DMACCxLLI y se reprograma solo con esos datos. No hace falta que la CPU vuelva a escribir los registros del canal.
+3. Cadena de bloques: puedes encadenar varios LLI (LLI1 → LLI2 → LLI3 → 0) para hacer varias transferencias distintas seguidas. Si el último LLI apunta a 0, la cadena acaba.
+4. Scatter/Gather real: cada LLI puede tener tamaños y direcciones diferentes, así que puedes:
+  4_1. juntar datos dispersos de memoria (scatter → 1 destino),
+  4_2. o repartir un bloque a varios sitios (gather → varios destinos).
+5. Menos carga de CPU: la CPU solo prepara los LLI al principio; después el DMA va “consumiéndolos” solo.
+6. Máx. 4095 por bloque: cada LLI sigue limitado al tamaño máximo de transferencia del DMA; para más datos, se trocea en varios LLI.
+7. IRQ por bloque (opcional): si pones el bit I en el Control del LLI, tienes interrupción justo al terminar ese bloque concreto.
+8. Cuidado con bucles: si un LLI apunta a otro que a su vez apunta al primero, tienes un ciclo infinito (útil para salidas periódicas, peligroso si no lo controlas).
+
+---
+
 ## 🔹 Interrupciones (NVIC)
 
 ### Vector Interrupt Controller
