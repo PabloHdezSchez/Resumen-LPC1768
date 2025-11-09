@@ -680,6 +680,81 @@ uint16_t val = (LPC_ADC->ADGDR >> 4) & 0xFFF;
 
 ```
 
+## DAC
+
+### Intro
+
+El LPC1768 tiene un único DAC de 10 bits pensado para sacar señales analógicas sencillas (senoidales por tabla, audio bajo, rampas…) a través de un solo pin: P0.26 (AOUT). A diferencia del ADC:
+
+- No se alimenta por PCONP: se “habilita” simplemente poniendo el pin en función DAC en PINSEL.
+- La conversión es instantánea en cuanto escribes en el registro DACR, pero la salida tarda un tiempo de establecimiento que depende del bit BIAS.
+- Tiene 3 registros: DACR (dato + bias), DACCTRL (control/timer) y DACCNTVAL (valor de contador).
+- Puede trabajar “a mano” (tú escribes cada muestra) o en modo de actualización periódica usando un timer interno del DAC (útil para sacar tablas).
+
+### Dirección Base
+
+| Periférico | Dirección base                               |
+| ---------- | -------------------------------------------- |
+| **DAC**    | **0x4008 C000** _(rango del DAC en LPC1768)_ |
+
+### Registros Principales
+
+| Registro      | Offset | Función                                                                     |
+| ------------- | ------ | --------------------------------------------------------------------------- |
+| **DACR**      | +0x00  | D/A Converter Register: contiene el valor de 10 bits (VALUE) y el bit BIAS. |
+| **DACCTRL**   | +0x04  | Control del DAC: doble buffer, DMA, contador, etc.                          |
+| **DACCNTVAL** | +0x08  | Valor del contador interno que marca cada cuánto se actualiza la salida.    |
+
+#### DACR - D/A Converter Register
+
+- VALUE [15:6]: aquí pones el dato de 10 bits que quieres convertir (0…1023).
+
+- BIAS [16]: selecciona rapidez/consumo:
+
+  - 0 → tiempo de establecimiento ≤ 1 µs, corriente máx. 700 µA, f_DAC máx ≈ 1 MHz
+  - 1 → tiempo de establecimiento ≤ 2,5 µs, corriente máx. 350 µA, f_DAC máx ≈ 400 kHz
+
+- Formula salida:
+  `V_out = VALUE * (VREFP - VREFN) / 1023 + VREFN`
+
+#### DACCTRL - Control Register
+
+- DBLBUF_ENA: usar el registro de doble buffer (escribes y se actualiza en el siguiente “tick”).
+- CNT_ENA: habilitar que el DAC se actualice con el contador interno.
+- DMA_ENA: permitir que un DMA llene el DAC.
+
+La idea es: escribes el valor en DACR, pero si está el doble buffer y el contador activos, la salida no cambia inmediatamente, sino cuando el contador llegue a DACCNTVAL.
+
+#### DACCNTVAL - Contador
+
+Es el valor de recarga del contador interno del DAC. Cada vez que el contador llega a este valor, el DAC “acepta” el dato nuevo del buffer. Esto te sirve para sacar una tabla de muestras a una frecuencia fija sin tener que estar mirando un timer externo.
+
+### Ejemplo básico
+
+1. Configurar PINSEL1 para que P0.26 sea AOUT.
+2. Escribir en DACR el valor (desplazado a bits 15:6) y el BIAS que quieras.
+3. La salida se mueve a ese nivel después del tiempo de establecimiento elegido.
+
+```c
+// P0.26 -> AOUT
+LPC_PINCON->PINSEL1 &= ~(3 << 20);
+LPC_PINCON->PINSEL1 |=  (2 << 20);     // función AOUT en P0.26
+
+// Valor medio (1.65V si Vref=3.3V), BIAS=0 (rápido)
+uint16_t value10 = 512;                // 10 bits
+LPC_DAC->DACR = (value10 << 6) | (0 << 16);
+```
+
+### Formulas
+
+1. Tensión salida:
+   `V_out = VALUE * (VREFP - VREFN) / 1023 + VREFN`
+2. Frecuencia máxima DAC:
+   - BIAS=0: f_DAC max ≈ 1 MHz
+   - BIAS=1: f_DAC max ≈ 400 kHz
+3. Resolución:
+   `ΔV = (VREFP - VREFN) / 1023`
+
 ---
 
 ## 🔹 Interrupciones (NVIC)
