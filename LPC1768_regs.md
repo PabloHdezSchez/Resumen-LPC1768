@@ -8,9 +8,9 @@ Resumen de los registros más importantes del microcontrolador **LPC1768 (ARM Co
 
 ### Power Control
 
-| Registro | Dirección | Función |
-|-----------|-----------|---------|
-| **PCON** | 0x400FC0C0 | Control de energía |
+| Registro  | Dirección  | Función                           |
+| --------- | ---------- | --------------------------------- |
+| **PCON**  | 0x400FC0C0 | Control de energía                |
 | **PCONP** | 0x400FC0C4 | Control de energía de periféricos |
 
 #### PCONP - Bits importantes
@@ -29,10 +29,10 @@ Resumen de los registros más importantes del microcontrolador **LPC1768 (ARM Co
 
 ### Clock Control
 
-| Registro | Dirección | Función |
-|-----------|-----------|---------|
-| **CCLKCFG** | 0x400FC104 | Divisor del CPU clock |
-| **PCLKSEL0** | 0x400FC1A8 | Divisor de clock para periféricos (0-15) |
+| Registro     | Dirección  | Función                                   |
+| ------------ | ---------- | ----------------------------------------- |
+| **CCLKCFG**  | 0x400FC104 | Divisor del CPU clock                     |
+| **PCLKSEL0** | 0x400FC1A8 | Divisor de clock para periféricos (0-15)  |
 | **PCLKSEL1** | 0x400FC1AC | Divisor de clock para periféricos (16-31) |
 
 #### Valores de PCLKSEL
@@ -64,13 +64,13 @@ LPC_SC->PCLKSEL0 |=  ((0x2 << 2) | (0x1 << 6));  // Timer0=CCLK/2, UART0=CCLK
 
 ### Pin Function Select
 
-| Registro | Dirección | Rango de Pines |
-|-----------|-----------|----------------|
-| **PINSEL0** | 0x4002C000 | P0[15:0] |
-| **PINSEL1** | 0x4002C004 | P0[31:16] |
-| **PINSEL2** | 0x4002C008 | P1[15:0] |
-| **PINSEL3** | 0x4002C00C | P1[31:16] |
-| **PINSEL4** | 0x4002C010 | P2[15:0] |
+| Registro    | Dirección  | Rango de Pines |
+| ----------- | ---------- | -------------- |
+| **PINSEL0** | 0x4002C000 | P0[15:0]       |
+| **PINSEL1** | 0x4002C004 | P0[31:16]      |
+| **PINSEL2** | 0x4002C008 | P1[15:0]       |
+| **PINSEL3** | 0x4002C00C | P1[31:16]      |
+| **PINSEL4** | 0x4002C010 | P2[15:0]       |
 
 #### Valores PINSEL (2 bits por pin)
 
@@ -91,8 +91,8 @@ LPC_GPIO0->FIODIR   |=  (1u<<10);
 
 ### Pin Mode (Pull-up/Pull-down)
 
-| Registro | Dirección | Función |
-|-----------|-----------|---------|
+| Registro       | Dirección             | Función                    |
+| -------------- | --------------------- | -------------------------- |
 | **PINMODE0-9** | 0x4002C040-0x4002C064 | Modo de pull para cada pin |
 
 #### Valores PINMODE
@@ -104,13 +104,13 @@ LPC_GPIO0->FIODIR   |=  (1u<<10);
 
 ### Fast GPIO (Puertos 0-4)
 
-| Registro | Dirección Base | Función |
-|-----------|----------------|---------|
-| **FIO0DIR** | 0x2009C000 | Dirección Puerto 0 (1=salida, 0=entrada) |
-| **FIO0MASK** | 0x2009C010 | Es la máscara del Puerto 0 para las operaciones con FIO0PIN |
-| **FIO0PIN** | 0x2009C014 | Valor actual Puerto 0 |
-| **FIO0SET** | 0x2009C018 | Set bits Puerto 0 |
-| **FIO0CLR** | 0x2009C01C | Clear bits Puerto 0 |
+| Registro     | Dirección Base | Función                                                     |
+| ------------ | -------------- | ----------------------------------------------------------- |
+| **FIO0DIR**  | 0x2009C000     | Dirección Puerto 0 (1=salida, 0=entrada)                    |
+| **FIO0MASK** | 0x2009C010     | Es la máscara del Puerto 0 para las operaciones con FIO0PIN |
+| **FIO0PIN**  | 0x2009C014     | Valor actual Puerto 0                                       |
+| **FIO0SET**  | 0x2009C018     | Set bits Puerto 0                                           |
+| **FIO0CLR**  | 0x2009C01C     | Clear bits Puerto 0                                         |
 
 #### Para otros puertos
 
@@ -148,29 +148,29 @@ NVIC_EnableIRQ(TIMER0_IRQn);  // habilita interrupción de Timer0
 
 ### Registros Base
 
-| Timer | Dirección Base |
-|-------|----------------|
-| Timer 0 | 0x40004000 |
-| Timer 1 | 0x40008000 |
-| Timer 2 | 0x40090000 |
-| Timer 3 | 0x40094000 |
+| Timer   | Dirección Base |
+| ------- | -------------- |
+| Timer 0 | 0x40004000     |
+| Timer 1 | 0x40008000     |
+| Timer 2 | 0x40090000     |
+| Timer 3 | 0x40094000     |
 
 ### Registros de Control
 
-| Registro | Offset | Función |
-|-----------|--------|---------|
-| **IR** | +0x00 | Interrupt Register - Muestra qué evento produjo la interrupción (Se limpia escribiendo 1) |
-| **TCR** | +0x04 | Timer Control Register - Arranque y reset del contador |
-| **TC** | +0x08 | Timer Counter - Contador principal de 32 bits |
-| **PR** | +0x0C | Prescale Register - Valor del divisor de frecuencia |
-| **PC** | +0x10 | Prescale Counter - Contador del prescaler, se reinicia al alcanzar PR |
-| **MCR** | +0x14 | Match Control Register - Define acciones al coincidir TC=MRx |
-| **MR0-MR3** | +0x18-0x24 | Match Registers - Valores de comparación |
-| **CCR** | +0x28 | Capture Control Register - Configuración del flancos de captura y habilitación de interrupciones |
-| **CR0-CR3** | +0x2C-0x38 | Capture Registers - Almacenan el valor de TC al capturar |
-| **EMR** | +0x3C | External Match Register - Controla las salidas MATx.y (Toggle, set, clear) |
-| **CTCR** | +0x70 | Count Control Register - Selecciona modo Timer o Counter y fuente externa |
-| **PWMC** | +0x74 | PWM Control - Habilita salida PWM simple en coincidencias MRx |
+| Registro    | Offset     | Función                                                                                          |
+| ----------- | ---------- | ------------------------------------------------------------------------------------------------ |
+| **IR**      | +0x00      | Interrupt Register - Muestra qué evento produjo la interrupción (Se limpia escribiendo 1)        |
+| **TCR**     | +0x04      | Timer Control Register - Arranque y reset del contador                                           |
+| **TC**      | +0x08      | Timer Counter - Contador principal de 32 bits                                                    |
+| **PR**      | +0x0C      | Prescale Register - Valor del divisor de frecuencia                                              |
+| **PC**      | +0x10      | Prescale Counter - Contador del prescaler, se reinicia al alcanzar PR                            |
+| **MCR**     | +0x14      | Match Control Register - Define acciones al coincidir TC=MRx                                     |
+| **MR0-MR3** | +0x18-0x24 | Match Registers - Valores de comparación                                                         |
+| **CCR**     | +0x28      | Capture Control Register - Configuración del flancos de captura y habilitación de interrupciones |
+| **CR0-CR3** | +0x2C-0x38 | Capture Registers - Almacenan el valor de TC al capturar                                         |
+| **EMR**     | +0x3C      | External Match Register - Controla las salidas MATx.y (Toggle, set, clear)                       |
+| **CTCR**    | +0x70      | Count Control Register - Selecciona modo Timer o Counter y fuente externa                        |
+| **PWMC**    | +0x74      | PWM Control - Habilita salida PWM simple en coincidencias MRx                                    |
 
 #### TCR - Bits importantes
 
@@ -243,7 +243,7 @@ void TIMER0_IRQHandler(void) {
 ### Formula
 
 - Formula base:
-`f = PCLK / ((PR + 1) * (MR + 1))`
+  `f = PCLK / ((PR + 1) * (MR + 1))`
 
 ---
 
@@ -263,15 +263,14 @@ Para usar cualquier UART hay que seguir siempre esta secuencia:
 6. Interrupciones. Habilitar las interrupciones UART poner el bit DLAB = 0 en el registro U0/2/3LCR. Esto habilita el acceso a U0/2/3IER. No olvidar habilitar las interrupciones con NVIC.
 7. DMA: UART0/2/3 las operaciones de transmitir y recibir pueden operar con el controlador GPMA.
 
-
 ### Registros Base
 
-| UART | Dirección Base |
-|------|----------------|
-| UART0 | 0x4000C000 |
-| UART1 | 0x40010000 |
-| UART2 | 0x40098000 |
-| UART3 | 0x4009C000 |
+| UART  | Dirección Base |
+| ----- | -------------- |
+| UART0 | 0x4000C000     |
+| UART1 | 0x40010000     |
+| UART2 | 0x40098000     |
+| UART3 | 0x4009C000     |
 
 ### Registros Principales
 
@@ -320,6 +319,7 @@ Estos bits son los que miras en la ISR cuando IIR te dice “RLS”.
 Esto permite, por ejemplo, que no te interrumpa por cada byte, sino cuando haya 4 u 8.
 
 Uso típico:
+
 ```c
 LPC_UART0->FCR = (1<<0) | (1<<1) | (1<<2);   // FIFO on + reset RX + reset TX
 // (luego puedes volver a escribir sin los reset si quieres configurar el trigger)
@@ -334,7 +334,7 @@ LPC_UART0->FCR = (1<<0) | (1<<1) | (1<<2);   // FIFO on + reset RX + reset TX
 - Bit 2 – RLS: error de línea.
 - Bits 8 y 9 – ABEO / ABTO (auto baud).
 
-##### IIR (Interrupt Identification Register) te dice qué ha pasado:
+##### IIR (Interrupt Identification Register) te dice qué ha pasado
 
 - 0x04 → RDA (hay dato en RX)
 - 0x02 → THRE (puedes mandar más)
@@ -344,6 +344,7 @@ LPC_UART0->FCR = (1<<0) | (1<<1) | (1<<2);   // FIFO on + reset RX + reset TX
 No olvidar habilitar también en NVIC la IRQ concreta: UART0_IRQn, UART1_IRQn, UART2_IRQn, UART3_IRQn.
 
 ### Generador de Bauidios
+
 1. La UART recibe un reloj: PCLK_UARTn
 2. Ese reloj se divide primero por 16 internamente.
 3. Luego se aplica el divisor de 16 bits(DLL:DLM)
@@ -354,11 +355,13 @@ La fórmula completa es la siguiente:
 `Baud = PCLK / (16 * DLL_DLM * (1 + DIVADDVAL/MULVAL))`
 
 Siendo:
-- DLL_DLM = 256 * DLM + DLL
+
+- DLL_DLM = 256 \* DLM + DLL
 - DIVADDVAL = FDR[3:0]
 - MULVAL = FDR[7:4]
 
 Reglas del FDR:
+
 - 1 <= MULVAL <= 15
 - 0 <= DIVADDVAL <= 14
 
@@ -412,7 +415,7 @@ NVIC_EnableIRQ(PWM1_IRQn);
 
 ### Registros de Control
 
-| Registro | Offset | Descripción |
+| Registro    | Offset     | Descripción                                                                                 |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------- |
 | **IR**      | +0x00      | Interrupt Register – bandera de interrupciones por match/capture (se limpia escribiendo 1). |
 | **TCR**     | +0x04      | Timer Control Register – arranque, reset y modo PWM.                                        |
@@ -424,7 +427,7 @@ NVIC_EnableIRQ(PWM1_IRQn);
 | **LER**     | +0x50      | Load Enable Register – actualiza MRx en el siguiente ciclo.                                 |
 | **PCR**     | +0x4C      | PWM Control Register – activa salidas PWM y modo single/double edge.                        |
 | **CTCR**    | +0x70      | Count Control Register – modo Timer o Counter.                                              |
-| **PWMC**    | +0x74      | PWM Mode Control – activa modo PWM general. *(En LPC1768 ya se gestiona desde TCR)*         |
+| **PWMC**    | +0x74      | PWM Mode Control – activa modo PWM general. _(En LPC1768 ya se gestiona desde TCR)_         |
 
 ### Detalles Registros
 
@@ -440,7 +443,7 @@ En modo PWM, se suele escribir TCR = 0x09 (bits 3 y 0 activos).
 
 #### MCR - Match Control Register
 
-|  Bits | Función            |
+| Bits  | Función            |
 | :---: | :----------------- |
 | [0–2] | MR0I / MR0R / MR0S |
 | [3–5] | MR1I / MR1R / MR1S |
@@ -448,10 +451,10 @@ En modo PWM, se suele escribir TCR = 0x09 (bits 3 y 0 activos).
 
 #### PCR - PWM Control
 
-|  Bit | Nombre              | Descripción                      |
+| Bit  | Nombre              | Descripción                      |
 | :--: | :------------------ | :------------------------------- |
 | 9–14 | **PWMENA1–PWMENA6** | 1 = activa cada salida PWM1.x    |
-|  2–6 | **PWMSELx**         | 0 = single edge, 1 = double edge |
+| 2–6  | **PWMSELx**         | 0 = single edge, 1 = double edge |
 
 #### LER - Load Enable
 
@@ -545,42 +548,136 @@ void set_servo(float grados){
 
 ## 🔹 ADC
 
+El LPC1768 lleva un único ADC de 12 bits basado en aproximaciones sucesivas (SAR), con 8 entradas multiplexadas y una frecuencia máxima de conversión de 200 kHz (≈5 µs por conversión). El rango (“SPAN”) va de VREFN a VREFP y VREFP−VREFN no puede superar VDDA. Puede trabajar en:
+
+- Modo manual (software controlled): conviertes cuando tú se lo dices.
+- Modo ráfaga (BURST): él va haciendo conversiones de forma continua sobre los canales que marques.
+- Arranque externo o por timer: la conversión puede dispararse por flancos en pines o por salidas de match de temporizadores
+
+### Intro
+
+La secuencia típica es:
+
+1. Activar alimentación del ADC en PCONP (bit PCADC) y despues habilitar AD0CR.
+2. Elegir PCLK_ADC en PCLKSEL0. Para escalar el reloj -> CLKDIV.
+3. Configurar los pines analógicos en PINSEL y sin pull-up/pull-down en PINMODE.
+4. Configurar el registro de control AD0CR: canal, divisor de reloj, PDN=1.
+5. Elegir modo (manual/BURST) y fuente de arranque.
+   Leer el resultado en AD0GDR o en AD0DRn.
+6. (Opcional) habilitar interrupciones en AD0INTEN y en NVIC.
+7. (Opcional) usar DMA en modo BURST.
+
 ### Dirección Base: 0x40034000
 
 ### Registros Principales
 
-| Registro | Offset | Función |
-|-----------|--------|---------|
-| **ADCR** | +0x00 | Control Register |
-| **ADGDR** | +0x04 | Global Data Register |
-| **ADINTEN** | +0x0C | Interrupt Enable |
-| **ADDR0-ADDR7** | +0x10-0x2C | Data Registers (canales 0-7) |
-| **ADSTAT** | +0x30 | Status Register |
+| Registro          | Offset     | Función                                                                                               |
+| ----------------- | ---------- | ----------------------------------------------------------------------------------------------------- |
+| **AD0CR**         | +0x00      | Control del ADC: selección de canales, divisor de reloj, modo ráfaga, encendido, arranque.            |
+| **AD0GDR**        | +0x04      | Global Data Register: contiene el resultado de **la última** conversión hecha, sea del canal que sea. |
+| **AD0INTEN**      | +0x0C      | Habilita interrupción global o por canal.                                                             |
+| **AD0DR0–AD0DR7** | +0x10…0x2C | Resultado individual para cada canal (con DONE y OVERRUN por canal).                                  |
+| **AD0STAT**       | +0x30      | Estado de todos los canales (DONE, OVERRUN) y flag global de interrupción.                            |
+| **AD0TRIM**       | +0x34      | Ajuste fino interno del ADC/DAC.                                                                      |
 
 #### ADCR - Control Register
 
-- Bits 0-7: SEL (Selección de canal)
-- Bits 8-15: CLKDIV (Divisor de clock)
-- Bit 16: BURST (Modo burst)
-- Bits 17-19: CLKS (Número de clocks)
-- Bit 21: PDN (Power Down)
-- Bits 24-26: START (Control de inicio)
+- Bits 0-7: SEL (Selección de canal) qué canales se van a convertir. En manual debe haber solo 1 a ‘1’. En BURST puede haber varios.
+- Bits 8-15: CLKDIV (Divisor de clock) Genera el reloj del ADC. Ver formula abajo.
+- Bit 16: BURST (Modo burst) 0 = conversión manual; 1 = conversión continua (no usar START ≠ 000)
+- Bit 21: PDN (Power Down) 1 = ADC operativo; 0 = apagado.
+- Bits 24-26: START (Control de inicio) START (solo si BURST=0): 000=parado, 001=convierte ya, 010–111=convierte en flanco de pin/timer seleccionado.
 - Bit 27: EDGE (Flanco para inicio externo)
 
-#### Bits de resultado (ADGDR/ADDRx)
+Formula f_adc
+`f_adc = PCLK_ADC / (CLKDIV + 1)`
+Debe cumplir que f_adc ≤ 13 MHz.
 
-- Bits 4-15: RESULT (Resultado 12-bit)
-- Bits 24-26: CHN (Canal que generó el resultado)
-- Bit 30: OVERRUN (Sobrescritura)
-- Bit 31: DONE (Conversión completa)
+#### AD0GDR – Global Data Register
+
+- RESULT [15:4]: valor de 12 bits alineado a la izquierda.
+- CHN [26:24]: canal del que viene ese resultado.
+- OVERRUN [30]: se perdió una conversión porque no la leíste a tiempo.
+- DONE [31]: la conversión ha terminado (se borra al leer).
+
+Puede generar interrupción si en AD0INTEN activas el bit 8 (global).
+
+#### AD0DRn – Data Register por canal
+
+Igual que el global, pero solo del canal n:
+
+- RESULT [15:4]
+- OVERRUN [30]
+- DONE [31]
+
+Si en AD0INTEN activas el bit de ese canal y el global está a 0, la IRQ salta solo por ese canal.
+
+### AD0INTEN – Interrupción Enable
+
+- Bits 0–7: interrupción por fin de conversión de ese canal.
+- Bit 8: interrupción global (salta cuando cualquier canal termina).
+  Si pones el 8 a 1, los bits 0–7 dejan de tener efecto. Úsalo según si quieres una ISR “genérica” o una “por canal”.
+
+#### AD0STAT – Status Register
+
+- Bits 0–7: DONE por canal.
+- Bits 8–15: OVERRUN por canal.
+- Bit 16: Global DONE (cualquiera de los canales ha terminado).
+
+### Modos de Funcionamiento
+
+#### Modo Manual (Software Controlled)
+
+1. PDN = 1
+2. Burst = 0
+3. Solo un canal en SEL = 1
+4. START = 001 para iniciar conversión
+5. Esperar DONE en AD0GDR o AD0DRn
+6. Leer resultado -> DONE se borra al leer
+
+#### Modo Burst (Ráfaga)
+
+1. PDN = 1
+2. Burst = 1
+3. Varios canales en SEL = 1
+4. START = 000 (ignorado)
+5. El ADC va haciendo conversiones en secuencia de hasta 200 kHz. Ideal usar el DMA para ir leyendo AD0DRn en un bucle.
+
+#### Modo Inicio Externo (por pin o timer)
+
+En START eliges la fuente (p.ej. MAT0.1) y en EDGE el flanco. Así sincronizas el muestreo con un timer o un pin (muy usado para muestreos periódicos exactos).
+
+### Formulas importantes
+
+1. Reloj ADC: `f_adc = PCLK_ADC / (CLKDIV + 1)` (debe ser ≤ 13 MHz)
+2. Tiempo de conversion: `T_conv = 65 / f_adc`
+3. Frecuencia máxima de muestreo: `f_sample_max = f_adc / 65` (≈ 200 kHz si f_adc = 13 MHz)
+4. Conversion a Voltios: `V_in = (RESULT / 4095) * (VREFP - VREFN) + VREFN`
 
 **Configuración ADC:**
 
 ```c
-ADCR = 0x00200401;   // Canal 0, CLKDIV=4, PDN=1
-ADCR |= 0x01000000;  // START=001 (inicio inmediato)
-while(!(ADGDR & 0x80000000)); // Esperar DONE
-result = (ADGDR >> 4) & 0xFFF;
+// 1) Alimentar ADC
+LPC_SC->PCONP |= (1 << 12);            // PCADC = bit 12
+
+// 2) PCLK_ADC = CCLK/4 (por defecto) --> supongamos 25 MHz
+
+// 3) Pin como entrada analógica, p.ej. P0.25 = AD0.2
+LPC_PINCON->PINSEL1  |=  (1 << 18);    // función AD0.2
+LPC_PINCON->PINMODE1 |=  (2 << 18);    // sin pull-up/down
+
+// 4) AD0CR: seleccionar canal, divisor y encender
+LPC_ADC->ADCR = (1 << 2)        // SEL: canal 2
+              | (4 << 8)        // CLKDIV: 25MHz/(4+1)=5 MHz < 13 MHz
+              | (1 << 21);      // PDN=1
+
+// 5) Arrancar conversión por software
+LPC_ADC->ADCR |= (1 << 24);     // START = 001
+
+// 6) Esperar fin y leer
+while (!(LPC_ADC->ADGDR & (1UL << 31)));
+uint16_t val = (LPC_ADC->ADGDR >> 4) & 0xFFF;
+
 ```
 
 ---
@@ -589,29 +686,29 @@ result = (ADGDR >> 4) & 0xFFF;
 
 ### Vector Interrupt Controller
 
-| Registro | Dirección | Función |
-|-----------|-----------|---------|
-| **ISER0** | 0xE000E100 | Interrupt Set-Enable (0-31) |
-| **ISER1** | 0xE000E104 | Interrupt Set-Enable (32-63) |
-| **ICER0** | 0xE000E180 | Interrupt Clear-Enable (0-31) |
+| Registro  | Dirección  | Función                        |
+| --------- | ---------- | ------------------------------ |
+| **ISER0** | 0xE000E100 | Interrupt Set-Enable (0-31)    |
+| **ISER1** | 0xE000E104 | Interrupt Set-Enable (32-63)   |
+| **ICER0** | 0xE000E180 | Interrupt Clear-Enable (0-31)  |
 | **ICER1** | 0xE000E184 | Interrupt Clear-Enable (32-63) |
-| **ISPR0** | 0xE000E200 | Interrupt Set-Pending (0-31) |
+| **ISPR0** | 0xE000E200 | Interrupt Set-Pending (0-31)   |
 | **ICPR0** | 0xE000E280 | Interrupt Clear-Pending (0-31) |
 
 ### Interrupciones Principales del LPC1768
 
-| IRQ# | Nombre | Descripción |
-|------|--------|-------------|
-| 1 | TIMER0_IRQn | Timer 0 |
-| 2 | TIMER1_IRQn | Timer 1 |
-| 3 | TIMER2_IRQn | Timer 2 |
-| 4 | TIMER3_IRQn | Timer 3 |
-| 5 | UART0_IRQn | UART0 |
-| 6 | UART1_IRQn | UART1 |
-| 7 | UART2_IRQn | UART2 |
-| 8 | UART3_IRQn | UART3 |
-| 9 | PWM1_IRQn | PWM1 |
-| 22 | ADC_IRQn | ADC |
+| IRQ# | Nombre      | Descripción |
+| ---- | ----------- | ----------- |
+| 1    | TIMER0_IRQn | Timer 0     |
+| 2    | TIMER1_IRQn | Timer 1     |
+| 3    | TIMER2_IRQn | Timer 2     |
+| 4    | TIMER3_IRQn | Timer 3     |
+| 5    | UART0_IRQn  | UART0       |
+| 6    | UART1_IRQn  | UART1       |
+| 7    | UART2_IRQn  | UART2       |
+| 8    | UART3_IRQn  | UART3       |
+| 9    | PWM1_IRQn   | PWM1        |
+| 22   | ADC_IRQn    | ADC         |
 
 **Habilitar interrupción:**
 
@@ -625,12 +722,12 @@ NVIC_EnableIRQ(TIMER0_IRQn);  // Habilitar Timer0
 
 ### Registros (Base: 0xE000E010)
 
-| Registro | Offset | Función |
-|-----------|--------|---------|
-| **CTRL** | +0x00 | Control y Status |
-| **LOAD** | +0x04 | Reload Value |
-| **VAL** | +0x08 | Current Value |
-| **CALIB** | +0x0C | Calibration |
+| Registro  | Offset | Función          |
+| --------- | ------ | ---------------- |
+| **CTRL**  | +0x00  | Control y Status |
+| **LOAD**  | +0x04  | Reload Value     |
+| **VAL**   | +0x08  | Current Value    |
+| **CALIB** | +0x0C  | Calibration      |
 
 #### CTRL bits
 
@@ -652,12 +749,12 @@ SysTick->CTRL = 0x07;     // Enable, Interrupt, CPU clock
 
 ### Dirección Base: 0x40000000
 
-| Registro | Offset | Función |
-|-----------|--------|---------|
-| **WDMOD** | +0x00 | Mode Register |
-| **WDTC** | +0x04 | Timer Constant |
-| **WDFEED** | +0x08 | Feed Sequence |
-| **WDTV** | +0x0C | Timer Value |
+| Registro   | Offset | Función        |
+| ---------- | ------ | -------------- |
+| **WDMOD**  | +0x00  | Mode Register  |
+| **WDTC**   | +0x04  | Timer Constant |
+| **WDFEED** | +0x08  | Feed Sequence  |
+| **WDTV**   | +0x0C  | Timer Value    |
 
 #### WDMOD bits
 
@@ -677,23 +774,23 @@ WDFEED = 0x55;
 
 ### Registros Base
 
-| I2C | Dirección Base |
-|-----|----------------|
-| I2C0 | 0x4001C000 |
-| I2C1 | 0x4005C000 |
-| I2C2 | 0x400A0000 |
+| I2C  | Dirección Base |
+| ---- | -------------- |
+| I2C0 | 0x4001C000     |
+| I2C1 | 0x4005C000     |
+| I2C2 | 0x400A0000     |
 
 ### Registros Principales
 
-| Registro | Offset | Función |
-|-----------|--------|---------|
-| **CONSET** | +0x00 | Control Set |
-| **STAT** | +0x04 | Status |
-| **DAT** | +0x08 | Data |
-| **ADR0** | +0x0C | Slave Address 0 |
-| **SCLH** | +0x10 | SCL High Duty Cycle |
-| **SCLL** | +0x14 | SCL Low Duty Cycle |
-| **CONCLR** | +0x18 | Control Clear |
+| Registro   | Offset | Función             |
+| ---------- | ------ | ------------------- |
+| **CONSET** | +0x00  | Control Set         |
+| **STAT**   | +0x04  | Status              |
+| **DAT**    | +0x08  | Data                |
+| **ADR0**   | +0x0C  | Slave Address 0     |
+| **SCLH**   | +0x10  | SCL High Duty Cycle |
+| **SCLL**   | +0x14  | SCL Low Duty Cycle  |
+| **CONCLR** | +0x18  | Control Clear       |
 
 ---
 
@@ -701,20 +798,20 @@ WDFEED = 0x55;
 
 ### Registros Base
 
-| SPI | Dirección Base |
-|-----|----------------|
-| SSP0 | 0x40088000 |
-| SSP1 | 0x40030000 |
+| SPI  | Dirección Base |
+| ---- | -------------- |
+| SSP0 | 0x40088000     |
+| SSP1 | 0x40030000     |
 
 ### Registros Principales
 
-| Registro | Offset | Función |
-|-----------|--------|---------|
-| **CR0** | +0x00 | Control Register 0 |
-| **CR1** | +0x04 | Control Register 1 |
-| **DR** | +0x08 | Data Register |
-| **SR** | +0x0C | Status Register |
-| **CPSR** | +0x10 | Clock Prescale Register |
+| Registro | Offset | Función                 |
+| -------- | ------ | ----------------------- |
+| **CR0**  | +0x00  | Control Register 0      |
+| **CR1**  | +0x04  | Control Register 1      |
+| **DR**   | +0x08  | Data Register           |
+| **SR**   | +0x0C  | Status Register         |
+| **CPSR** | +0x10  | Clock Prescale Register |
 
 ---
 
